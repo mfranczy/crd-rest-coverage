@@ -2,10 +2,8 @@ package main
 
 import (
 	"flag"
-	"io/ioutil"
 
 	"github.com/golang/glog"
-
 	"github.com/mfranczy/crd-rest-coverage/pkg/report"
 )
 
@@ -26,13 +24,7 @@ func main() {
 		glog.Exitf("swagger-path and audit-log-path are required")
 	}
 
-	// TODO: fix the way how logs are read
-	auditLogs, err := ioutil.ReadFile(auditLogPath)
-	if err != nil {
-		glog.Exit(err)
-	}
-
-	err = report.Generate(string(auditLogs), swaggerPath, "", outputJSONPath, true)
+	_, err := report.Generate(auditLogPath, swaggerPath, "", outputJSONPath, true)
 	if err != nil {
 		glog.Exit(err)
 	}

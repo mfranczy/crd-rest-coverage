@@ -7,10 +7,12 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/go-openapi/loads"
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/runtime"
 	auditv1 "k8s.io/apiserver/pkg/apis/audit/v1"
@@ -214,11 +216,7 @@ func printReport(report map[string]float64, detailed bool) error {
 }
 
 // dumpReport saves a generated report into a file in JSON format
-func dumpReport(path string, report map[string]float64) error {
-	jsonReport, err := json.Marshal(report)
-	if err != nil {
-		return err
-	}
+func dumpReport(path string, jsonReport []byte) error {
 	return ioutil.WriteFile(path, jsonReport, 0644)
 }
 
@@ -227,16 +225,26 @@ func dumpReport(path string, report map[string]float64) error {
 // - "filter" you can limit the report to specific resources, as an example, "/apis/kubevirt.io/v1alpha3/" limits to kubevirt v1alpha3; "" no limit
 // - "storeInFilePath" instead of sending the report to stdout it is possible to keep it as a file in JSON format (always detailed)
 // - "detailed" whether a printed report should contain coverage information for each resource, if not it will show only the total coverage number
-func Generate(auditLogs string, swaggerPath string, filter string, storeInFilePath string, detailed bool) error {
+func Generate(auditLogsPath string, swaggerPath string, filter string, storeInFilePath string, detailed bool) ([]byte, error) {
 	start := time.Now()
 	defer glog.Infof("REST API coverage execution time: %s", time.Since(start))
 
-	restAPIStats, err := analysis.GetRESTApiStats(swaggerPath, filter)
+	auditLogs, err := os.Open(auditLogsPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	scanner := bufio.NewReader(strings.NewReader(auditLogs))
+	sDocument, err := loads.JSONSpec(swaggerPath)
+	if err != nil {
+		return nil, err
+	}
+
+	restAPIStats, err := analysis.GetRESTApiStats(sDocument, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewReader(auditLogs)
 	for {
 		var event auditv1.Event
 		b, err := scanner.ReadBytes('\n')
@@ -246,12 +254,12 @@ func Generate(auditLogs string, swaggerPath string, filter string, storeInFilePa
 
 		err = json.Unmarshal(b, &event)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		uri, err := url.Parse(event.RequestURI)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		path := getSwaggerPath(uri.Path, event.ObjectRef)
@@ -280,8 +288,12 @@ func Generate(auditLogs string, swaggerPath string, filter string, storeInFilePa
 	}
 
 	report := calculateCoverage(restAPIStats)
-	if storeInFilePath != "" {
-		return dumpReport(storeInFilePath, report)
+	jsonReport, err := json.Marshal(report)
+	if err != nil {
+		return nil, err
 	}
-	return printReport(report, detailed)
+	if storeInFilePath != "" {
+		return jsonReport, dumpReport(storeInFilePath, jsonReport)
+	}
+	return jsonReport, printReport(report, detailed)
 }

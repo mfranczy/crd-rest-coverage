@@ -22,13 +22,8 @@ type RequestStats struct {
 }
 
 // GetRESTApiStats initializes a stats structure based on swagger definition with total params number for each available endpoint
-func GetRESTApiStats(swaggerPath string, filter string) (map[string]map[string]*RequestStats, error) {
+func GetRESTApiStats(document *loads.Document, filter string) (map[string]map[string]*RequestStats, error) {
 	restAPIStats := make(map[string]map[string]*RequestStats)
-
-	document, err := loads.JSONSpec(swaggerPath)
-	if err != nil {
-		return nil, err
-	}
 
 	for _, mp := range document.Analyzer.OperationMethodPaths() {
 		v := strings.Split(mp, " ")
