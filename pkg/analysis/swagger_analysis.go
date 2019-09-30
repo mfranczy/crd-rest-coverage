@@ -6,72 +6,68 @@ import (
 
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/spec"
+
+	"github.com/mfranczy/crd-rest-coverage/pkg/stats"
 )
 
 var refCache = make(map[string]int)
 
-// RequestStats represents a basic statistics structure which is used to calculate REST API coverage
-type RequestStats struct {
-	Body         map[string]int
-	Query        map[string]int
-	ParamsHit    int
-	ParamsNum    int
-	MethodCalled bool
-	Path         string
-	Method       string
-}
-
-// GetRESTApiStats initializes a stats structure based on swagger definition with total params number for each available endpoint
-func GetRESTApiStats(document *loads.Document, filter string) (map[string]map[string]*RequestStats, error) {
-	restAPIStats := make(map[string]map[string]*RequestStats)
+// AnalyzeSwagger initializes a stats structure based on swagger definition with total params number for each available endpoint
+func AnalyzeSwagger(document *loads.Document, filter string) (*stats.Coverage, error) {
+	coverage := stats.Coverage{
+		Endpoints: make(map[string]map[string]*stats.Endpoint),
+	}
 
 	for _, mp := range document.Analyzer.OperationMethodPaths() {
 		v := strings.Split(mp, " ")
 		if len(v) != 2 {
 			return nil, fmt.Errorf("Invalid method:path pair '%s'", mp)
 		}
-		method, path := v[0], v[1]
+		method, path := strings.ToLower(v[0]), strings.ToLower(v[1])
 
 		// filter requests uri
 		if !strings.HasPrefix(path, filter) {
 			continue
 		}
 
-		if _, ok := restAPIStats[path]; !ok {
-			restAPIStats[path] = make(map[string]*RequestStats)
+		if _, ok := coverage.Endpoints[path]; !ok {
+			coverage.Endpoints[path] = make(map[string]*stats.Endpoint)
 		}
 
-		if _, ok := restAPIStats[path][method]; !ok {
-			restAPIStats[path][method] = &RequestStats{
-				Query:  make(map[string]int),
+		if _, ok := coverage.Endpoints[path][method]; !ok {
+			coverage.Endpoints[path][method] = &stats.Endpoint{
+				ParamsHitDetails: stats.ParamsHitDetails{
+					Query: make(map[string]int),
+					Body:  make(map[string]int),
+				},
 				Path:   path,
 				Method: method,
 			}
 		}
 
-		addSwaggerParams(restAPIStats[path][method], document.Analyzer.ParamsFor(method, path), document.Spec().Definitions)
+		addSwaggerParams(coverage.Endpoints[path][method], document.Analyzer.ParamsFor(method, path), document.Spec().Definitions)
 	}
 
-	return restAPIStats, nil
+	return &coverage, nil
 }
 
 // addSwaggerParams adds parameters from swagger definition into request stats structure,
 // parameters contain the total number value which is used to calculate coverage percentage (occurrence-number * 100 / total-number)
-func addSwaggerParams(requestStats *RequestStats, params map[string]spec.Parameter, definitions spec.Definitions) {
+func addSwaggerParams(endpoint *stats.Endpoint, params map[string]spec.Parameter, definitions spec.Definitions) {
 	for _, param := range params {
 		switch param.In {
 		case "body":
-			requestStats.Body = make(map[string]int)
+			// TODO: extract body params here, move extract function from report
 		case "query":
-			requestStats.Query[param.Name] = 0
+			endpoint.ParamsHitDetails.Query[param.Name] = 0
 		default:
 			continue
 		}
 
 		if param.Schema != nil {
-			requestStats.ParamsNum += countRefParams(param.Schema, definitions)
+			endpoint.ParamsNum += countRefParams(param.Schema, definitions)
 		} else {
-			requestStats.ParamsNum++
+			endpoint.ParamsNum++
 		}
 	}
 }
