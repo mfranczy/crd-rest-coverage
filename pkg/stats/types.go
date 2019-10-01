@@ -9,8 +9,8 @@ type Coverage struct {
 // Endpoint represents a basic statistics structure which is used to calculate REST API coverage
 type Endpoint struct {
 	ParamsHitDetails `json:"paramsHitDetails"`
-	ParamsHit        int     `json:"paramsHit"`
-	ParamsNum        int     `json:"paramsNum"`
+	UniqueHit        int     `json:"hit"`
+	Sum              int     `json:"sum"`
 	MethodCalled     bool    `json:"methodCalled"`
 	Path             string  `json:"path"`
 	Method           string  `json:"method"`

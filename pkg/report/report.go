@@ -62,7 +62,7 @@ func matchQueryParams(values url.Values, endpoint *stats.Endpoint) {
 		if hits, ok := endpoint.ParamsHitDetails.Query[k]; ok {
 			if hits < 1 {
 				// get only unique hits
-				endpoint.ParamsHit++
+				endpoint.UniqueHit++
 			}
 			endpoint.ParamsHitDetails.Query[k]++
 		} else {
@@ -136,8 +136,7 @@ func extractBodyParams(params interface{}, path string, endpoint *stats.Endpoint
 		default:
 			if i, ok := endpoint.ParamsHitDetails.Body[path]; ok {
 				if i < 1 {
-					// count unique hits
-					endpoint.ParamsHit++
+					endpoint.UniqueHit++
 				}
 				endpoint.ParamsHitDetails.Body[path]++
 			} else {
@@ -151,35 +150,32 @@ func extractBodyParams(params interface{}, path string, endpoint *stats.Endpoint
 
 // calculateCoverage provides a total REST API and PATH:METHOD coverage number
 func calculateCoverage(coverage *stats.Coverage) {
-	num, hit := 0, 0
+	totalSum, totalUniqueHit := 0, 0
 
 	for _, es := range coverage.Endpoints {
 		for _, e := range es {
-			// count path hits
 			if e.MethodCalled {
-				e.ParamsHit++
-				e.ParamsNum++
+				e.UniqueHit++
 			}
-
 			// sometimes hit number is bigger than params number
 			// for instance it might be caused by missing models definition
 			// users have to make sure that their definitions are complete
-			if e.ParamsHit > e.ParamsNum {
-				e.ParamsHit = e.ParamsNum
+			if e.UniqueHit > e.Sum {
+				e.UniqueHit = e.Sum
 			}
 
-			if e.ParamsNum > 0 {
-				num += e.ParamsNum
-				hit += e.ParamsHit
-				e.Total = float64(e.ParamsHit) * 100 / float64(e.ParamsNum)
+			if e.Sum > 0 {
+				totalSum += e.Sum
+				totalUniqueHit += e.UniqueHit
+				e.Total = float64(e.UniqueHit) * 100 / float64(e.Sum)
 			} else {
 				e.Total = 0
 			}
 		}
 	}
 
-	if num > 0 {
-		coverage.Total = float64(hit) * 100 / float64(num)
+	if totalSum > 0 {
+		coverage.Total = float64(totalUniqueHit) * 100 / float64(totalSum)
 	} else {
 		coverage.Total = 0
 	}
