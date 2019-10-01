@@ -34,13 +34,13 @@ func AnalyzeSwagger(document *loads.Document, filter string) (*stats.Coverage, e
 
 		if _, ok := coverage.Endpoints[path][method]; !ok {
 			coverage.Endpoints[path][method] = &stats.Endpoint{
-				ParamsHitDetails: stats.ParamsHitDetails{
+				ParamsHitsDetails: stats.ParamsHitsDetails{
 					Query: make(map[string]int),
 					Body:  make(map[string]int),
 				},
-				Path:   path,
-				Method: method,
-				Sum:    1, // count endpoint calls
+				Path:               path,
+				Method:             method,
+				ExpectedUniqueHits: 1, // count endpoint calls
 			}
 		}
 
@@ -57,14 +57,14 @@ func addSwaggerParams(endpoint *stats.Endpoint, params map[string]spec.Parameter
 		switch param.In {
 		case "body":
 			if param.Schema != nil {
-				endpoint.Sum += extractRefParams(param.Schema, definitions, param.Name, endpoint.ParamsHitDetails.Body)
+				endpoint.ExpectedUniqueHits += extractRefParams(param.Schema, definitions, param.Name, endpoint.ParamsHitsDetails.Body)
 			} else {
-				endpoint.ParamsHitDetails.Body[param.Name] = 0
-				endpoint.Sum++
+				endpoint.ParamsHitsDetails.Body[param.Name] = 0
+				endpoint.ExpectedUniqueHits++
 			}
 		case "query":
-			endpoint.ParamsHitDetails.Query[param.Name] = 0
-			endpoint.Sum++
+			endpoint.ParamsHitsDetails.Query[param.Name] = 0
+			endpoint.ExpectedUniqueHits++
 		default:
 			continue
 		}

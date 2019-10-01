@@ -59,12 +59,12 @@ func getHTTPMethod(verb string) string {
 // - it logs an error for not documented/invalid parameters, in this example parameter named "test2"
 func matchQueryParams(values url.Values, endpoint *stats.Endpoint) {
 	for k := range values {
-		if hits, ok := endpoint.ParamsHitDetails.Query[k]; ok {
+		if hits, ok := endpoint.ParamsHitsDetails.Query[k]; ok {
 			if hits < 1 {
 				// get only unique hits
-				endpoint.UniqueHit++
+				endpoint.UniqueHits++
 			}
-			endpoint.ParamsHitDetails.Query[k]++
+			endpoint.ParamsHitsDetails.Query[k]++
 		} else {
 			glog.Errorf("Invalid query param: '%s' for '%s %s'", k, endpoint.Method, endpoint.Path)
 		}
@@ -77,7 +77,7 @@ func matchQueryParams(values url.Values, endpoint *stats.Endpoint) {
 // - it builds the parameter path and increase its occurrence number, stats.Endpoint{method: POST, Body: {param1.param2: 1}, ParamsHit: 1}
 // - it returns an error if request provides body params but it is not defined in swagger definition
 func matchBodyParams(requestObject *runtime.Unknown, endpoint *stats.Endpoint) error {
-	if requestObject != nil && endpoint.ParamsHitDetails.Body != nil {
+	if requestObject != nil && endpoint.ParamsHitsDetails.Body != nil {
 		var req interface{}
 		err := json.Unmarshal(requestObject.Raw, &req)
 		if err != nil {
@@ -134,11 +134,11 @@ func extractBodyParams(params interface{}, path string, endpoint *stats.Endpoint
 				extractBodyParams(v, path, endpoint, level)
 			}
 		default:
-			if i, ok := endpoint.ParamsHitDetails.Body[path]; ok {
+			if i, ok := endpoint.ParamsHitsDetails.Body[path]; ok {
 				if i < 1 {
-					endpoint.UniqueHit++
+					endpoint.UniqueHits++
 				}
-				endpoint.ParamsHitDetails.Body[path]++
+				endpoint.ParamsHitsDetails.Body[path]++
 			} else {
 				glog.Errorf("Invalid body param: '%s' for '%s %s'", k, endpoint.Method, endpoint.Path)
 			}
@@ -153,27 +153,27 @@ func calculateCoverage(coverage *stats.Coverage) {
 	for _, es := range coverage.Endpoints {
 		for _, e := range es {
 			if e.MethodCalled {
-				e.UniqueHit++
+				e.UniqueHits++
 			}
 			// sometimes hit number is bigger than params number
 			// for instance it might be caused by missing models definition
 			// users have to make sure that their definitions are complete
-			if e.UniqueHit > e.Sum {
-				e.UniqueHit = e.Sum
+			if e.UniqueHits > e.ExpectedUniqueHits {
+				e.UniqueHits = e.ExpectedUniqueHits
 			}
 
-			if e.Sum > 0 {
-				coverage.Sum += e.Sum
-				coverage.UniqueHit += e.UniqueHit
-				e.Percent = float64(e.UniqueHit) * 100 / float64(e.Sum)
+			if e.ExpectedUniqueHits > 0 {
+				coverage.ExpectedUniqueHits += e.ExpectedUniqueHits
+				coverage.UniqueHits += e.UniqueHits
+				e.Percent = float64(e.UniqueHits) * 100 / float64(e.ExpectedUniqueHits)
 			} else {
 				e.Percent = 0
 			}
 		}
 	}
 
-	if coverage.Sum > 0 {
-		coverage.Percent = float64(coverage.UniqueHit) * 100 / float64(coverage.Sum)
+	if coverage.ExpectedUniqueHits > 0 {
+		coverage.Percent = float64(coverage.UniqueHits) * 100 / float64(coverage.ExpectedUniqueHits)
 	} else {
 		coverage.Percent = 0
 	}
