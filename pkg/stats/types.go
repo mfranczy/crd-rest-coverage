@@ -2,7 +2,9 @@ package stats
 
 // Coverage represents a REST API statistics
 type Coverage struct {
-	Total     float64                         `json:"total"`
+	UniqueHit int                             `json:"uniqueHit"`
+	Sum       int                             `json:"sum"`
+	Percent   float64                         `json:"percent"`
 	Endpoints map[string]map[string]*Endpoint `json:"endpoints"`
 }
 
@@ -11,10 +13,10 @@ type Endpoint struct {
 	ParamsHitDetails `json:"paramsHitDetails"`
 	UniqueHit        int     `json:"hit"`
 	Sum              int     `json:"sum"`
+	Percent          float64 `json:"percent"`
 	MethodCalled     bool    `json:"methodCalled"`
 	Path             string  `json:"path"`
 	Method           string  `json:"method"`
-	Total            float64 `json:"total"`
 }
 
 // ParamsHitDetails represents a parameter path with its occurence number

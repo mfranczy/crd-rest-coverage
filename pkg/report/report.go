@@ -150,8 +150,6 @@ func extractBodyParams(params interface{}, path string, endpoint *stats.Endpoint
 
 // calculateCoverage provides a total REST API and PATH:METHOD coverage number
 func calculateCoverage(coverage *stats.Coverage) {
-	totalSum, totalUniqueHit := 0, 0
-
 	for _, es := range coverage.Endpoints {
 		for _, e := range es {
 			if e.MethodCalled {
@@ -165,19 +163,19 @@ func calculateCoverage(coverage *stats.Coverage) {
 			}
 
 			if e.Sum > 0 {
-				totalSum += e.Sum
-				totalUniqueHit += e.UniqueHit
-				e.Total = float64(e.UniqueHit) * 100 / float64(e.Sum)
+				coverage.Sum += e.Sum
+				coverage.UniqueHit += e.UniqueHit
+				e.Percent = float64(e.UniqueHit) * 100 / float64(e.Sum)
 			} else {
-				e.Total = 0
+				e.Percent = 0
 			}
 		}
 	}
 
-	if totalSum > 0 {
-		coverage.Total = float64(totalUniqueHit) * 100 / float64(totalSum)
+	if coverage.Sum > 0 {
+		coverage.Percent = float64(coverage.UniqueHit) * 100 / float64(coverage.Sum)
 	} else {
-		coverage.Total = 0
+		coverage.Percent = 0
 	}
 }
 
@@ -188,12 +186,12 @@ func Print(coverage *stats.Coverage, detailed bool) error {
 		for p, es := range coverage.Endpoints {
 			fmt.Println(p)
 			for _, e := range es {
-				fmt.Printf("%s:%.2f%%\t", strings.ToUpper(e.Method), e.Total)
+				fmt.Printf("%s:%.2f%%\t", strings.ToUpper(e.Method), e.Percent)
 			}
 			fmt.Println("\n")
 		}
 	}
-	fmt.Printf("\nTotal coverage: %.2f%%\n\n", coverage.Total)
+	fmt.Printf("\nTotal coverage: %.2f%%\n\n", coverage.Percent)
 	return nil
 }
 
