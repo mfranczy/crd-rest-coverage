@@ -86,13 +86,13 @@ func matchBodyParams(requestObject *runtime.Unknown, endpoint *stats.Endpoint) e
 		switch r := req.(type) {
 		case []interface{}:
 			for _, v := range r {
-				err = extractBodyParams(v, "", endpoint.ParamsHitDetails.Body, &endpoint.ParamsHit, 0)
+				err = extractBodyParams(v, "", endpoint, 0)
 				if err != nil {
 					return fmt.Errorf("Invalid requestObject '%s' for '%s %s'", err, endpoint.Method, endpoint.Path)
 				}
 			}
 		default:
-			err = extractBodyParams(r, "", endpoint.ParamsHitDetails.Body, &endpoint.ParamsHit, 0)
+			err = extractBodyParams(r, "", endpoint, 0)
 			if err != nil {
 				return fmt.Errorf("Invalid requestObject '%s' for '%s %s'", err, endpoint.Method, endpoint.Path)
 			}
@@ -109,7 +109,7 @@ func matchBodyParams(requestObject *runtime.Unknown, endpoint *stats.Endpoint) e
 // {param1: {param2: {param3a: value1, param3b: value2}}} will be extracted into paths:
 // - param1.param2.param3a: 1
 // - param1.param2.param3b: 1
-func extractBodyParams(params interface{}, path string, body map[string]int, counter *int, level int) error {
+func extractBodyParams(params interface{}, path string, endpoint *stats.Endpoint, level int) error {
 	p, ok := params.(map[string]interface{})
 	if !ok && level == 0 {
 		return fmt.Errorf("%v", p)
@@ -128,16 +128,21 @@ func extractBodyParams(params interface{}, path string, body map[string]int, cou
 
 		switch obj := v.(type) {
 		case map[string]interface{}:
-			extractBodyParams(obj, path, body, counter, level)
+			extractBodyParams(obj, path, endpoint, level)
 		case []interface{}:
 			for _, v := range obj {
-				extractBodyParams(v, path, body, counter, level)
+				extractBodyParams(v, path, endpoint, level)
 			}
 		default:
-			if _, ok := body[path]; !ok {
-				*counter++
+			if i, ok := endpoint.ParamsHitDetails.Body[path]; ok {
+				if i < 1 {
+					// count unique hits
+					endpoint.ParamsHit++
+				}
+				endpoint.ParamsHitDetails.Body[path]++
+			} else {
+				glog.Errorf("Invalid body param: '%s' for '%s %s'", k, endpoint.Method, endpoint.Path)
 			}
-			body[path]++
 		}
 		path = pathCopy
 	}

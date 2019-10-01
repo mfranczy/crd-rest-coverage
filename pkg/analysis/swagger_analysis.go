@@ -10,8 +10,6 @@ import (
 	"github.com/mfranczy/crd-rest-coverage/pkg/stats"
 )
 
-var refCache = make(map[string]int)
-
 // AnalyzeSwagger initializes a stats structure based on swagger definition with total params number for each available endpoint
 func AnalyzeSwagger(document *loads.Document, filter string) (*stats.Coverage, error) {
 	coverage := stats.Coverage{
@@ -57,28 +55,29 @@ func addSwaggerParams(endpoint *stats.Endpoint, params map[string]spec.Parameter
 	for _, param := range params {
 		switch param.In {
 		case "body":
-			// TODO: extract body params here, move extract function from report
+			if param.Schema != nil {
+				endpoint.ParamsNum += extractRefParams(param.Schema, definitions, param.Name, endpoint.ParamsHitDetails.Body)
+			} else {
+				endpoint.ParamsHitDetails.Body[param.Name] = 0
+				endpoint.ParamsNum++
+			}
 		case "query":
 			endpoint.ParamsHitDetails.Query[param.Name] = 0
+			endpoint.ParamsNum++
 		default:
 			continue
-		}
-
-		if param.Schema != nil {
-			endpoint.ParamsNum += countRefParams(param.Schema, definitions)
-		} else {
-			endpoint.ParamsNum++
 		}
 	}
 }
 
-// countRefParams calculates total param numbers by following definition references
+// extractRefParams returns total param numbers by following definition references
 // NOTE: it does not support definitions from external files, only local
-func countRefParams(schema *spec.Schema, definitions spec.Definitions) int {
+func extractRefParams(schema *spec.Schema, definitions spec.Definitions, paramPath string, params map[string]int) int {
 	var tokens []string
 	ptr := schema.Ref.GetPointer()
 	pCnt := 0
 
+	// TODO: replace by ptr.Get() func
 	if tokens = ptr.DecodedTokens(); len(tokens) < 2 {
 		return 0
 	}
@@ -94,23 +93,21 @@ func countRefParams(schema *spec.Schema, definitions spec.Definitions) int {
 		return 0
 	}
 
-	// if it is possible, get data from map to avoid calculation
-	if val, ok := refCache[tokens[1]]; ok {
-		return val
-	}
-
+	// TODO: add cache to optimize params extraction
 	if len(def.Properties) > 0 {
-		for _, p := range def.Properties {
+		for n, p := range def.Properties {
+			path := paramPath + "." + n
 			if r := p.Ref.GetPointer(); r != nil && len(r.DecodedTokens()) > 0 {
-				pCnt += countRefParams(&p, definitions)
+				pCnt += extractRefParams(&p, definitions, path, params)
 			} else {
+				params[path] = 0
 				pCnt++
 			}
 		}
 	} else {
+		params[paramPath] = 0
 		pCnt++
 	}
 
-	refCache[tokens[1]] = pCnt
 	return pCnt
 }
