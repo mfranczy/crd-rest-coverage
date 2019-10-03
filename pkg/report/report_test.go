@@ -1,12 +1,9 @@
 package report
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/url"
-	"os"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
@@ -14,47 +11,20 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	auditv1 "k8s.io/apiserver/pkg/apis/audit/v1"
 
-	"github.com/mfranczy/crd-rest-coverage/pkg/analysis"
+	"github.com/mfranczy/crd-rest-coverage/pkg/stats"
 )
 
 var _ = Describe("REST API coverage report", func() {
 
 	Context("With pets audit log", func() {
 
-		Context("With reading an audit file", func() {
+		It("Should generate a coverage report", func() {
+			By("Generating a coverage report")
+			coverage, err := Generate(auditLogPath, petStoreSwaggerPath, "")
+			Expect(err).NotTo(HaveOccurred(), "report should be generated")
 
-			var tmpFile string
-
-			BeforeEach(func() {
-				f, err := ioutil.TempFile("/tmp", "report")
-				Expect(err).NotTo(HaveOccurred(), "temporary report file should be created")
-				tmpFile = f.Name()
-			})
-
-			AfterEach(func() {
-				err := os.Remove(tmpFile)
-				Expect(err).NotTo(HaveOccurred(), "temporary report file should be deleted")
-			})
-
-			It("Should generate a coverage report", func() {
-				var stats map[string]float64
-
-				By("Reading audit log file")
-				auditLogs, err := ioutil.ReadFile(auditLogPath)
-				Expect(err).NotTo(HaveOccurred(), "audit log file should be open")
-
-				By("Generating a coverage report")
-				err = Generate(string(auditLogs), petStoreSwaggerPath, "", tmpFile, true)
-				Expect(err).NotTo(HaveOccurred(), "report should be generated")
-
-				By("Checking generated report")
-				data, err := ioutil.ReadFile(tmpFile)
-				Expect(err).NotTo(HaveOccurred(), "report file should exist")
-
-				err = json.Unmarshal(data, &stats)
-				Expect(err).NotTo(HaveOccurred(), "report umarshal should not return an error")
-				Expect(int(stats["total"])).To(Equal(44), "coverage number should be equal to expected output")
-			})
+			By("Checking generated report")
+			Expect(math.Round(coverage.Percent*100)/100).To(Equal(47.37), "coverage percent should be equal to expected output")
 		})
 
 		table.DescribeTable("Should return correct swagger path based on audit URL", func(URI string, objRef *auditv1.ObjectReference, swaggerPath string) {
@@ -103,15 +73,15 @@ var _ = Describe("REST API coverage report", func() {
 		table.DescribeTable("Should translate k8s verb to HTTP method", func(verb string, httpMethod string) {
 			Expect(getHTTPMethod(verb)).To(Equal(httpMethod), fmt.Sprintf("verb %s should be translated to %s", verb, httpMethod))
 		},
-			table.Entry("With get verb", "get", "GET"),
-			table.Entry("With list verb", "list", "GET"),
-			table.Entry("With watch verb", "watch", "GET"),
-			table.Entry("With watchList verb", "watchList", "GET"),
-			table.Entry("With create verb", "create", "POST"),
-			table.Entry("With delete verb", "delete", "DELETE"),
-			table.Entry("With deletecollection verb", "deletecollection", "DELETE"),
-			table.Entry("With update verb", "update", "PUT"),
-			table.Entry("With patch verb", "patch", "PATCH"),
+			table.Entry("With get verb", "get", "get"),
+			table.Entry("With list verb", "list", "get"),
+			table.Entry("With watch verb", "watch", "get"),
+			table.Entry("With watchList verb", "watchList", "get"),
+			table.Entry("With create verb", "create", "post"),
+			table.Entry("With delete verb", "delete", "delete"),
+			table.Entry("With deletecollection verb", "deletecollection", "delete"),
+			table.Entry("With update verb", "update", "put"),
+			table.Entry("With patch verb", "patch", "patch"),
 			table.Entry("With invalid verb", "invalid", ""),
 			table.Entry("With empty verb", "", ""),
 		)
@@ -119,40 +89,46 @@ var _ = Describe("REST API coverage report", func() {
 		Context("With matching query params", func() {
 
 			It("Should match query params", func() {
-				reqStats := analysis.RequestStats{
-					Query: map[string]int{
-						"limit": 0,
-						"tags":  0,
+				endpoint := stats.Endpoint{
+					ParamsHitsDetails: stats.ParamsHitsDetails{
+						Query: map[string]int{
+							"limit": 0,
+							"tags":  0,
+						},
 					},
-					ParamsHit: 0,
+					UniqueHits: 0,
 				}
 				vals := url.Values{
 					"limit": []string{"100"},
 					"tags":  []string{"color"},
 				}
-				By("Matching the first time it should increase ParamsHit")
-				matchQueryParams(vals, &reqStats)
-				Expect(reqStats.ParamsHit).To(Equal(2), "unique params hit should be equal to provided params number")
-				Expect(reqStats.Query["limit"]).To(Equal(1), "'limit' parameter should increase its occurrence number")
-				Expect(reqStats.Query["tags"]).To(Equal(1), "'tags' parameter should increase its occurrence number")
+				By("Matching the first time it should increase UniqueHits")
+				matchQueryParams(vals, &endpoint)
+				Expect(endpoint.UniqueHits).To(Equal(2), "unique params hit should be equal to provided params number")
+				Expect(endpoint.Query["limit"]).To(Equal(1), "'limit' parameter should increase its occurrence number")
+				Expect(endpoint.Query["tags"]).To(Equal(1), "'tags' parameter should increase its occurrence number")
 
-				By("Matching the second time it should not increase ParamsHit")
-				matchQueryParams(vals, &reqStats)
-				Expect(reqStats.ParamsHit).To(Equal(2), "unique params hit should stay the same")
-				Expect(reqStats.Query["limit"]).To(Equal(2), "'limit' parameter should increase its occurrence number")
-				Expect(reqStats.Query["tags"]).To(Equal(2), "'tags' parameter should increase its occurrence number")
+				By("Matching the second time it should not increase UniqueHits")
+				matchQueryParams(vals, &endpoint)
+				Expect(endpoint.UniqueHits).To(Equal(2), "unique params hit should stay the same")
+				Expect(endpoint.Query["limit"]).To(Equal(2), "'limit' parameter should increase its occurrence number")
+				Expect(endpoint.Query["tags"]).To(Equal(2), "'tags' parameter should increase its occurrence number")
 			})
 
-			It("Should not increase ParamsHit for undefined query params", func() {
-				reqStats := analysis.RequestStats{
-					Query:     map[string]int{"limit": 0},
-					ParamsHit: 0,
+			It("Should not increase hits for undefined query params", func() {
+				endpoint := stats.Endpoint{
+					ParamsHitsDetails: stats.ParamsHitsDetails{
+						Query: map[string]int{
+							"limit": 0,
+						},
+					},
+					UniqueHits: 0,
 				}
 				vals := url.Values{"unknown": []string{"test"}}
-				matchQueryParams(vals, &reqStats)
-				Expect(reqStats.ParamsHit).To(Equal(0), "unique request params hit should not be increased for unknown parameters")
-				Expect(reqStats.Query["limit"]).To(Equal(0), "query request params should not be increased for unknown parameters")
-				_, exists := reqStats.Query["unknown"]
+				matchQueryParams(vals, &endpoint)
+				Expect(endpoint.UniqueHits).To(Equal(0), "uniqueHits should not be increased for unknown parameters")
+				Expect(endpoint.ParamsHitsDetails.Query["limit"]).To(Equal(0), "hits counter should not be increased for unknown parameters")
+				_, exists := endpoint.ParamsHitsDetails.Query["unknown"]
 				Expect(exists).To(BeFalse(), "'unkown' parameter should not exist")
 			})
 
@@ -180,48 +156,63 @@ var _ = Describe("REST API coverage report", func() {
 						}`,
 					),
 				}
-				reqStats := analysis.RequestStats{
-					Body:      map[string]int{},
-					ParamsHit: 0,
+
+				endpoint := stats.Endpoint{
+					UniqueHits: 0,
+					ParamsHitsDetails: stats.ParamsHitsDetails{
+						Body: map[string]int{
+							"pet.name":                0,
+							"pet.tag":                 0,
+							"pet.kind.color":          0,
+							"pet.kind.origin.country": 0,
+							"pet.kind.origin.region":  0,
+							"pet.kind.profile.size":   0,
+						},
+					},
 				}
 
 				By("Matching the first time it should increase ParamsHit")
-				err := matchBodyParams(&reqObject, &reqStats)
+				err := matchBodyParams(&reqObject, &endpoint)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(reqStats.ParamsHit).To(Equal(5), "unique params hit should be equal to provided params number")
-				Expect(reqStats.Body["pet.name"]).To(Equal(1), "'pet.name' parameter should increase its occurrence number")
-				Expect(reqStats.Body["pet.kind.color"]).To(Equal(1), "'pet.kind.color' parameter should increase its occurrence number")
-				Expect(reqStats.Body["pet.kind.origin.country"]).To(Equal(1), "'pet.kind.origin.country' parameter should increase its occurrence number")
-				Expect(reqStats.Body["pet.kind.origin.region"]).To(Equal(1), "'pet.kind.origin.region' parameter should increase its occurrence number")
-				Expect(reqStats.Body["pet.kind.profile.size"]).To(Equal(1), "'pet.kind.profile.size' parameter should increase its occurrence number")
+				Expect(endpoint.UniqueHits).To(Equal(5), "uniqueHits should be equal to provided params number")
+				for path, hits := range endpoint.ParamsHitsDetails.Body {
+					if path == "pet.tag" {
+						Expect(hits).To(Equal(0), fmt.Sprintf("'%s' parameter should not increase hits number", path))
+					} else {
+						Expect(hits).To(Equal(1), fmt.Sprintf("'%s' parameter should increase hits number", path))
+					}
+				}
 
 				By("Matching the second time it should not increase ParamsHit")
-				matchBodyParams(&reqObject, &reqStats)
-				Expect(reqStats.ParamsHit).To(Equal(5), "unique params hit should stay the same")
-				Expect(reqStats.Body["pet.name"]).To(Equal(2), "'pet.name' parameter should increase its occurrence number")
-				Expect(reqStats.Body["pet.kind.color"]).To(Equal(2), "'pet.kind.color' parameter should increase its occurrence number")
-				Expect(reqStats.Body["pet.kind.origin.country"]).To(Equal(2), "'pet.kind.origin.country' parameter should increase its occurrence number")
-				Expect(reqStats.Body["pet.kind.origin.region"]).To(Equal(2), "'pet.kind.origin.region' parameter should increase its occurrence number")
-				Expect(reqStats.Body["pet.kind.profile.size"]).To(Equal(2), "'pet.kind.profile.size' parameter should increase its occurrence number")
+				matchBodyParams(&reqObject, &endpoint)
+				Expect(endpoint.UniqueHits).To(Equal(5), "uniqueHits should stay the same")
+				for path, hits := range endpoint.ParamsHitsDetails.Body {
+					if path == "pet.tag" {
+						Expect(hits).To(Equal(0), fmt.Sprintf("'%s' parameter should not increase hits number", path))
+					} else {
+						Expect(hits).To(Equal(2), fmt.Sprintf("'%s' parameter should increase hits number", path))
+					}
+				}
 			})
 
 			It("Should return an error for invalid body params", func() {
 				reqObject := runtime.Unknown{
 					Raw: []byte(
 						`{
-							"pet": {
+							"pet: {
 								name: bite,
 							}
 						}`,
 					),
 				}
-				reqStats := analysis.RequestStats{
-					Body:      map[string]int{},
-					ParamsHit: 0,
+				endpoint := stats.Endpoint{
+					ParamsHitsDetails: stats.ParamsHitsDetails{
+						Body: map[string]int{},
+					},
 				}
 
 				By("Passing invalid JSON object")
-				err := matchBodyParams(&reqObject, &reqStats)
+				err := matchBodyParams(&reqObject, &endpoint)
 				Expect(err).To(HaveOccurred(), "matchBodyParams should return an error for invalid JSON object")
 			})
 		})
@@ -229,51 +220,42 @@ var _ = Describe("REST API coverage report", func() {
 		Context("With coverage calculation", func() {
 
 			It("Should calculate REST coverage", func() {
-				expectedResult := map[string]float64{
-					"/pets:GET":           66.67,
-					"/pets:POST":          28.57,
-					"/pets/{name}:PATCH":  100,
-					"/pets/{name}:DELETE": 100,
-					"/pets/{name}:GET":    0,
-					"total":               63.16,
+				coverage := &stats.Coverage{
+					UniqueHits:         0,
+					ExpectedUniqueHits: 0,
+					Percent:            0,
+					Endpoints: map[string]map[string]*stats.Endpoint{
+						"/pets": map[string]*stats.Endpoint{
+							"post": &stats.Endpoint{
+								UniqueHits:         1,
+								ExpectedUniqueHits: 6,
+								MethodCalled:       true,
+								Percent:            0,
+							},
+						},
+						"/pets/{name}": map[string]*stats.Endpoint{
+							"patch": &stats.Endpoint{
+								UniqueHits:         10,
+								ExpectedUniqueHits: 6,
+								MethodCalled:       true,
+								Percent:            0,
+							},
+						},
+					},
 				}
+				calculateCoverage(coverage)
 
-				restAPIStats := map[string]map[string]*analysis.RequestStats{
-					"/pets": map[string]*analysis.RequestStats{
-						"POST": &analysis.RequestStats{
-							ParamsHit:    1,
-							ParamsNum:    6,
-							MethodCalled: true,
-						},
-						"GET": &analysis.RequestStats{
-							ParamsHit:    1,
-							ParamsNum:    2,
-							MethodCalled: true,
-						},
-					},
-					"/pets/{name}": map[string]*analysis.RequestStats{
-						"PATCH": &analysis.RequestStats{
-							ParamsHit:    10,
-							ParamsNum:    6,
-							MethodCalled: true,
-						},
-						"DELETE": &analysis.RequestStats{
-							ParamsHit:    0,
-							ParamsNum:    0,
-							MethodCalled: true,
-						},
-						"GET": &analysis.RequestStats{
-							ParamsHit:    0,
-							ParamsNum:    1,
-							MethodCalled: false,
-						},
-					},
-				}
-				result := calculateCoverage(restAPIStats)
-				for k, v := range result {
-					result[k] = math.Round(v*100) / 100
-				}
-				Expect(result).To(Equal(expectedResult), "coverage number should be equal to expected value")
+				By("Checking total coverage")
+				Expect(coverage.ExpectedUniqueHits).To(Equal(12), "total expectedUniqueHits should match expected value")
+				Expect(coverage.UniqueHits).To(Equal(8), "total uniqueHits should match expected value")
+				Expect(math.Round(coverage.Percent*100)/100).To(Equal(66.67), "total percent should match expected value")
+
+				By("Checking endpoints coverage")
+				Expect(math.Round(coverage.Endpoints["/pets"]["post"].Percent*100)/100).To(Equal(33.33),
+					"pets:post percent should match expected value")
+				Expect(math.Round(coverage.Endpoints["/pets/{name}"]["patch"].Percent*100)/100).To(Equal(100.0),
+					"pets/{name}:patch percent should match 100%, UniqueHits > ExpectedUniqueHits")
+
 			})
 
 		})

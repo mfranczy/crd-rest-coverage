@@ -188,7 +188,7 @@ func Print(coverage *stats.Coverage, detailed bool) error {
 			for _, e := range es {
 				fmt.Printf("%s:%.2f%%\t", strings.ToUpper(e.Method), e.Percent)
 			}
-			fmt.Println("\n")
+			fmt.Println()
 		}
 	}
 	fmt.Printf("\nTotal coverage: %.2f%%\n\n", coverage.Percent)
