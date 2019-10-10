@@ -1,12 +1,13 @@
 package analysis
 
 import (
-	"path"
-	"runtime"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 
 	"github.com/go-openapi/loads"
-	"github.com/go-openapi/spec"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
 	"github.com/mfranczy/crd-rest-coverage/pkg/stats"
@@ -14,267 +15,57 @@ import (
 
 var _ = Describe("Swagger analysis", func() {
 
-	_, p, _, ok := runtime.Caller(0)
-	if !ok {
-		panic("Unable to get the test file path")
-	}
-	fixturesPath := path.Join(path.Dir(p), "../../fixtures")
-
 	Context("With swagger petstore", func() {
 
-		petStoreSwaggerPath := path.Join(fixturesPath, "petstore.json")
-		document, err := loads.JSONSpec(petStoreSwaggerPath)
-		if err != nil {
-			panic(err)
-		}
+		DescribeTable("Should build a coverage structure", func(testFile string, filter string) {
+			var expectedCoverage stats.Coverage
 
-		Context("Without URI filter", func() {
-
-			It("Should build a full Coverage structure", func() {
-				expectedCoverage := &stats.Coverage{
-					Percent:            0,
-					UniqueHits:         0,
-					ExpectedUniqueHits: 0,
-					Endpoints: map[string]map[string]*stats.Endpoint{
-						"/pets": map[string]*stats.Endpoint{
-							"post": &stats.Endpoint{
-								ParamsHitsDetails: stats.ParamsHitsDetails{
-									Body: map[string]int{
-										"pet.kind.profile.size":   0,
-										"pet.name":                0,
-										"pet.tag":                 0,
-										"pet.kind.color":          0,
-										"pet.kind.origin.country": 0,
-										"pet.kind.origin.region":  0,
-									},
-									Query: map[string]int{},
-								},
-								UniqueHits:         0,
-								ExpectedUniqueHits: 7,
-								Percent:            0,
-								MethodCalled:       false,
-								Path:               "/pets",
-								Method:             "post",
-							},
-							"get": &stats.Endpoint{
-								ParamsHitsDetails: stats.ParamsHitsDetails{
-									Body: map[string]int{},
-									Query: map[string]int{
-										"tags":  0,
-										"limit": 0,
-									},
-								},
-								UniqueHits:         0,
-								ExpectedUniqueHits: 3,
-								Percent:            0,
-								MethodCalled:       false,
-								Path:               "/pets",
-								Method:             "get",
-							},
-						},
-						"/pets/{name}": map[string]*stats.Endpoint{
-							"get": &stats.Endpoint{
-								ParamsHitsDetails: stats.ParamsHitsDetails{
-									Body:  map[string]int{},
-									Query: map[string]int{},
-								},
-								UniqueHits:         0,
-								ExpectedUniqueHits: 1,
-								Percent:            0,
-								MethodCalled:       false,
-								Path:               "/pets/{name}",
-								Method:             "get",
-							},
-							"delete": &stats.Endpoint{
-								ParamsHitsDetails: stats.ParamsHitsDetails{
-									Body:  map[string]int{},
-									Query: map[string]int{},
-								},
-								UniqueHits:         0,
-								ExpectedUniqueHits: 1,
-								Percent:            0,
-								MethodCalled:       false,
-								Path:               "/pets/{name}",
-								Method:             "delete",
-							},
-							"patch": &stats.Endpoint{
-								ParamsHitsDetails: stats.ParamsHitsDetails{
-									Body: map[string]int{
-										"pet.kind.origin.region":  0,
-										"pet.kind.profile.size":   0,
-										"pet.kind.color":          0,
-										"pet.name":                0,
-										"pet.tag":                 0,
-										"pet.kind.origin.country": 0,
-									},
-									Query: map[string]int{},
-								},
-								UniqueHits:         0,
-								ExpectedUniqueHits: 7,
-								Percent:            0,
-								MethodCalled:       false,
-								Path:               "/pets/{name}",
-								Method:             "patch",
-							},
-						},
-					},
-				}
-
-				coverage, err := AnalyzeSwagger(document, "")
-				Expect(err).NotTo(HaveOccurred(), "coverage structure should be initialized")
-				Expect(coverage).To(Equal(expectedCoverage), "coverage values should be equal to expected values")
-			})
-
-		})
-
-		Context("With URI filter", func() {
-
-			It("Should build filtered REST API structure", func() {
-				expectedCoverage := &stats.Coverage{
-					Percent:            0,
-					UniqueHits:         0,
-					ExpectedUniqueHits: 0,
-					Endpoints: map[string]map[string]*stats.Endpoint{
-						"/pets/{name}": map[string]*stats.Endpoint{
-							"get": &stats.Endpoint{
-								ParamsHitsDetails: stats.ParamsHitsDetails{
-									Body:  map[string]int{},
-									Query: map[string]int{},
-								},
-								UniqueHits:         0,
-								ExpectedUniqueHits: 1,
-								Percent:            0,
-								MethodCalled:       false,
-								Path:               "/pets/{name}",
-								Method:             "get",
-							},
-							"delete": &stats.Endpoint{
-								ParamsHitsDetails: stats.ParamsHitsDetails{
-									Body:  map[string]int{},
-									Query: map[string]int{},
-								},
-								UniqueHits:         0,
-								ExpectedUniqueHits: 1,
-								Percent:            0,
-								MethodCalled:       false,
-								Path:               "/pets/{name}",
-								Method:             "delete",
-							},
-							"patch": &stats.Endpoint{
-								ParamsHitsDetails: stats.ParamsHitsDetails{
-									Body: map[string]int{
-										"pet.kind.origin.region":  0,
-										"pet.kind.origin.country": 0,
-										"pet.kind.profile.size":   0,
-										"pet.kind.color":          0,
-										"pet.name":                0,
-										"pet.tag":                 0,
-									},
-									Query: map[string]int{},
-								},
-								UniqueHits:         0,
-								ExpectedUniqueHits: 7,
-								Percent:            0,
-								MethodCalled:       false,
-								Path:               "/pets/{name}",
-								Method:             "patch",
-							},
-						},
-					},
-				}
-
-				coverage, err := AnalyzeSwagger(document, "/pets/{name}")
-				Expect(err).NotTo(HaveOccurred(), "coverage structure should be initialized")
-				Expect(coverage).To(Equal(expectedCoverage), "coverage values should be equal to expected values")
-
-			})
-		})
-
-		It("Should add swagger params", func() {
-			By("Resolving referenced definitions")
-			expectedEndpoint := stats.Endpoint{
-				ParamsHitsDetails: stats.ParamsHitsDetails{
-					Body: map[string]int{
-						"pet.name":                0,
-						"pet.tag":                 0,
-						"pet.kind.color":          0,
-						"pet.kind.origin.country": 0,
-						"pet.kind.origin.region":  0,
-						"pet.kind.profile.size":   0,
-					},
-					Query: map[string]int{},
-				},
-				UniqueHits:         0,
-				ExpectedUniqueHits: 7,
-				Percent:            0,
-				MethodCalled:       false,
-				Path:               "/pets",
-				Method:             "post",
-			}
-
-			initializedEndpoint := stats.Endpoint{
-				ParamsHitsDetails: stats.ParamsHitsDetails{
-					Body:  map[string]int{},
-					Query: map[string]int{},
-				},
-				UniqueHits:         0,
-				ExpectedUniqueHits: 1,
-				Percent:            0,
-				MethodCalled:       false,
-				Path:               "/pets",
-				Method:             "post",
-			}
-
-			addSwaggerParams(&initializedEndpoint, document.Analyzer.ParamsFor("POST", "/pets"), document.Spec().Definitions)
-			Expect(initializedEndpoint).To(Equal(expectedEndpoint), "endpoint values should be equal to expected values")
-
-			By("Not resolving referenced definitions")
-			expectedEndpoint = stats.Endpoint{
-				ParamsHitsDetails: stats.ParamsHitsDetails{
-					Body: map[string]int{},
-					Query: map[string]int{
-						"tags":  0,
-						"limit": 0,
-					},
-				},
-				UniqueHits:         0,
-				ExpectedUniqueHits: 3,
-				Percent:            0,
-				MethodCalled:       false,
-				Path:               "/pets",
-				Method:             "get",
-			}
-
-			initializedEndpoint = stats.Endpoint{
-				ParamsHitsDetails: stats.ParamsHitsDetails{
-					Body:  map[string]int{},
-					Query: map[string]int{},
-				},
-				UniqueHits:         0,
-				ExpectedUniqueHits: 1,
-				Percent:            0,
-				MethodCalled:       false,
-				Path:               "/pets",
-				Method:             "get",
-			}
-
-			addSwaggerParams(&initializedEndpoint, document.Analyzer.ParamsFor("GET", "/pets"), document.Spec().Definitions)
-			Expect(initializedEndpoint).To(Equal(expectedEndpoint), "endpoint values should be equal to expected values")
-		})
-
-		It("Should count params from referenced models", func() {
+			content, err := ioutil.ReadFile(testFile)
+			Expect(err).NotTo(HaveOccurred())
+			err = json.Unmarshal(content, &expectedCoverage)
+			Expect(err).NotTo(HaveOccurred())
 			document, err := loads.JSONSpec(petStoreSwaggerPath)
-			Expect(err).NotTo(HaveOccurred(), "swagger json file should be open")
+			Expect(err).NotTo(HaveOccurred())
 
-			params := document.Analyzer.ParamsFor("POST", "/pets")
+			coverage, err := AnalyzeSwagger(document, filter)
+			Expect(err).NotTo(HaveOccurred(), "coverage structure should be initialized")
 
-			paths := make(map[string]int)
-			pCnt := extractDefParams(params["body#Pet"].Schema, document.Spec().Definitions, "test", paths)
-			Expect(pCnt).To(Equal(6), "reference params number should be equal to expected value")
+			Expect(coverage.Percent).To(Equal(expectedCoverage.Percent), "percent should be equal to 0")
+			Expect(coverage.UniqueHits).To(Equal(expectedCoverage.UniqueHits), "uniqueHits should be equal")
+			Expect(coverage.ExpectedUniqueHits).To(Equal(expectedCoverage.ExpectedUniqueHits), "expectedUniqueHits should be equal")
+			Expect(len(coverage.Endpoints)).To(Equal(len(expectedCoverage.Endpoints)), "endpoints len should be equal")
 
-			paths = make(map[string]int)
-			pCnt = extractDefParams(params["body#Pet"].Schema, spec.Definitions{}, "", paths)
-			Expect(pCnt).To(Equal(0), "reference params number for non-existence definition should not be increased")
-		})
+			for path, methods := range coverage.Endpoints {
+
+				Expect(expectedCoverage.Endpoints).To(HaveKey(path), fmt.Sprintf("path %s should exist in expectedCoverage structure", path))
+
+				for method, endpoint := range methods {
+					expectedEndpoint := expectedCoverage.Endpoints[path][method]
+
+					By(fmt.Sprintf("Checking %s:%s endpoint", path, method))
+					Expect(expectedCoverage.Endpoints[path]).To(HaveKey(method),
+						fmt.Sprintf("method %s should exist in expectedCoverage structure", path))
+					Expect(endpoint.MethodCalled).To(Equal(expectedEndpoint.MethodCalled), "should have the same methodCalled values")
+					Expect(endpoint.UniqueHits).To(Equal(expectedEndpoint.UniqueHits), "should have the same uniqueHits values")
+					Expect(endpoint.ExpectedUniqueHits).To(Equal(expectedEndpoint.ExpectedUniqueHits), "should have the same expectedUniqueHits values")
+
+					By(fmt.Sprintf("Checking %s:%s endpoint's body params", path, method))
+					Expect(endpoint.Params.Body.Height).To(Equal(expectedEndpoint.Params.Body.Height), "should have the same height values")
+					Expect(endpoint.Params.Body.Size).To(Equal(expectedEndpoint.Params.Body.Size), "should have the same size values")
+					Expect(endpoint.Params.Body.UniqueHits).To(Equal(expectedEndpoint.Params.Body.UniqueHits), "should have the same uniqueHits values")
+					Expect(endpoint.Params.Body.ExpectedUniqueHits).To(Equal(expectedEndpoint.Params.Body.ExpectedUniqueHits), "should have the same expectedUniqueHits values")
+
+					By(fmt.Sprintf("Checking %s:%s endpoint's query params", path, method))
+					Expect(endpoint.Params.Query.Height).To(Equal(expectedEndpoint.Params.Query.Height), "should have the same height values")
+					Expect(endpoint.Params.Query.Size).To(Equal(expectedEndpoint.Params.Query.Size), "should have the same size values")
+					Expect(endpoint.Params.Query.UniqueHits).To(Equal(expectedEndpoint.Params.Query.UniqueHits), "should have the same uniqueHits values")
+					Expect(endpoint.Params.Query.ExpectedUniqueHits).To(Equal(expectedEndpoint.Params.Query.ExpectedUniqueHits), "should have the same expectedUniqueHits values")
+				}
+			}
+		},
+			Entry("Without URI filter", "fixtures/test_output.json", ""),
+			Entry("With URI filter", "fixtures/test_filter_output.json", "/pets/{name}"),
+		)
+
 	})
 })
