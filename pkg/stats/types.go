@@ -100,3 +100,7 @@ func (n *Node) GetChild(key string) *Node {
 	}
 	return nil
 }
+
+func (n *Node) String() string {
+	return n.Key
+}
