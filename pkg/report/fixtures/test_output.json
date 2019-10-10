@@ -1,0 +1,289 @@
+{
+    "uniqueHits": 10,
+    "expectedUniqueHits": 19,
+    "percent": 52.63157894736842,
+    "endpoints": {
+        "/pets": {
+            "get": {
+                "params": {
+                    "body": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    },
+                    "query": {
+                        "root": {
+                            "hits": 1,
+                            "depth": 0,
+                            "leaf": false,
+                            "items": {
+                                "limit": {
+                                    "hits": 1,
+                                    "depth": 1,
+                                    "leaf": true
+                                },
+                                "tags": {
+                                    "hits": 0,
+                                    "depth": 1,
+                                    "leaf": true
+                                }
+                            }
+                        },
+                        "uniqueHits": 1,
+                        "expectedUniqueHits": 2,
+                        "size": 2,
+                        "height": 1
+                    }
+                },
+                "uniqueHits": 2,
+                "expectedUniqueHits": 3,
+                "percent": 66.66666666666667,
+                "methodCalled": true,
+                "path": "/pets",
+                "method": "get"
+            },
+            "post": {
+                "params": {
+                    "body": {
+                        "root": {
+                            "hits": 7,
+                            "depth": 0,
+                            "leaf": false,
+                            "items": {
+                                "kind": {
+                                    "hits": 4,
+                                    "depth": 1,
+                                    "leaf": false,
+                                    "items": {
+                                        "color": {
+                                            "hits": 1,
+                                            "depth": 2,
+                                            "leaf": true
+                                        },
+                                        "origin": {
+                                            "hits": 3,
+                                            "depth": 2,
+                                            "leaf": false,
+                                            "items": {
+                                                "country": {
+                                                    "hits": 1,
+                                                    "depth": 3,
+                                                    "leaf": true
+                                                },
+                                                "region": {
+                                                    "hits": 2,
+                                                    "depth": 3,
+                                                    "leaf": true
+                                                }
+                                            }
+                                        },
+                                        "profile": {
+                                            "hits": 0,
+                                            "depth": 2,
+                                            "leaf": false,
+                                            "items": {
+                                                "size": {
+                                                    "hits": 0,
+                                                    "depth": 3,
+                                                    "leaf": true
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "name": {
+                                    "hits": 3,
+                                    "depth": 1,
+                                    "leaf": true
+                                },
+                                "tag": {
+                                    "hits": 0,
+                                    "depth": 1,
+                                    "leaf": true
+                                }
+                            }
+                        },
+                        "uniqueHits": 4,
+                        "expectedUniqueHits": 6,
+                        "size": 9,
+                        "height": 3
+                    },
+                    "query": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    }
+                },
+                "uniqueHits": 5,
+                "expectedUniqueHits": 7,
+                "percent": 71.42857142857143,
+                "methodCalled": true,
+                "path": "/pets",
+                "method": "post"
+            }
+        },
+        "/pets/{name}": {
+            "delete": {
+                "params": {
+                    "body": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    },
+                    "query": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    }
+                },
+                "uniqueHits": 1,
+                "expectedUniqueHits": 1,
+                "percent": 100,
+                "methodCalled": true,
+                "path": "/pets/{name}",
+                "method": "delete"
+            },
+            "get": {
+                "params": {
+                    "body": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    },
+                    "query": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    }
+                },
+                "uniqueHits": 1,
+                "expectedUniqueHits": 1,
+                "percent": 100,
+                "methodCalled": true,
+                "path": "/pets/{name}",
+                "method": "get"
+            },
+            "patch": {
+                "params": {
+                    "body": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false,
+                            "items": {
+                                "kind": {
+                                    "hits": 0,
+                                    "depth": 1,
+                                    "leaf": false,
+                                    "items": {
+                                        "color": {
+                                            "hits": 0,
+                                            "depth": 2,
+                                            "leaf": true
+                                        },
+                                        "origin": {
+                                            "hits": 0,
+                                            "depth": 2,
+                                            "leaf": false,
+                                            "items": {
+                                                "country": {
+                                                    "hits": 0,
+                                                    "depth": 3,
+                                                    "leaf": true
+                                                },
+                                                "region": {
+                                                    "hits": 0,
+                                                    "depth": 3,
+                                                    "leaf": true
+                                                }
+                                            }
+                                        },
+                                        "profile": {
+                                            "hits": 0,
+                                            "depth": 2,
+                                            "leaf": false,
+                                            "items": {
+                                                "size": {
+                                                    "hits": 0,
+                                                    "depth": 3,
+                                                    "leaf": true
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "name": {
+                                    "hits": 0,
+                                    "depth": 1,
+                                    "leaf": true
+                                },
+                                "tag": {
+                                    "hits": 0,
+                                    "depth": 1,
+                                    "leaf": true
+                                }
+                            }
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 6,
+                        "size": 9,
+                        "height": 3
+                    },
+                    "query": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    }
+                },
+                "uniqueHits": 1,
+                "expectedUniqueHits": 7,
+                "percent": 14.285714285714286,
+                "methodCalled": true,
+                "path": "/pets/{name}",
+                "method": "patch"
+            }
+        }
+    }
+}

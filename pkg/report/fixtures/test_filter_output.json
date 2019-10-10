@@ -1,0 +1,158 @@
+{
+    "uniqueHits": 3,
+    "expectedUniqueHits": 9,
+    "percent": 33.333333333333336,
+    "endpoints": {
+        "/pets/{name}": {
+            "delete": {
+                "params": {
+                    "body": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    },
+                    "query": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    }
+                },
+                "uniqueHits": 1,
+                "expectedUniqueHits": 1,
+                "percent": 100,
+                "methodCalled": true,
+                "path": "/pets/{name}",
+                "method": "delete"
+            },
+            "get": {
+                "params": {
+                    "body": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    },
+                    "query": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    }
+                },
+                "uniqueHits": 1,
+                "expectedUniqueHits": 1,
+                "percent": 100,
+                "methodCalled": true,
+                "path": "/pets/{name}",
+                "method": "get"
+            },
+            "patch": {
+                "params": {
+                    "body": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false,
+                            "items": {
+                                "kind": {
+                                    "hits": 0,
+                                    "depth": 1,
+                                    "leaf": false,
+                                    "items": {
+                                        "color": {
+                                            "hits": 0,
+                                            "depth": 2,
+                                            "leaf": true
+                                        },
+                                        "origin": {
+                                            "hits": 0,
+                                            "depth": 2,
+                                            "leaf": false,
+                                            "items": {
+                                                "country": {
+                                                    "hits": 0,
+                                                    "depth": 3,
+                                                    "leaf": true
+                                                },
+                                                "region": {
+                                                    "hits": 0,
+                                                    "depth": 3,
+                                                    "leaf": true
+                                                }
+                                            }
+                                        },
+                                        "profile": {
+                                            "hits": 0,
+                                            "depth": 2,
+                                            "leaf": false,
+                                            "items": {
+                                                "size": {
+                                                    "hits": 0,
+                                                    "depth": 3,
+                                                    "leaf": true
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "name": {
+                                    "hits": 0,
+                                    "depth": 1,
+                                    "leaf": true
+                                },
+                                "tag": {
+                                    "hits": 0,
+                                    "depth": 1,
+                                    "leaf": true
+                                }
+                            }
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 6,
+                        "size": 9,
+                        "height": 3
+                    },
+                    "query": {
+                        "root": {
+                            "hits": 0,
+                            "depth": 0,
+                            "leaf": false
+                        },
+                        "uniqueHits": 0,
+                        "expectedUniqueHits": 0,
+                        "size": 0,
+                        "height": 0
+                    }
+                },
+                "uniqueHits": 1,
+                "expectedUniqueHits": 7,
+                "percent": 14.285714285714286,
+                "methodCalled": true,
+                "path": "/pets/{name}",
+                "method": "patch"
+            }
+        }
+    }
+}

@@ -18,8 +18,8 @@ func TestCoverage(t *testing.T) {
 		panic("Not possible to get test file path")
 	}
 	fixturesPath := path.Join(path.Dir(p), "../../fixtures")
-	petStoreSwaggerPath = path.Join(fixturesPath, "petstore.json")
-	auditLogPath = path.Join(fixturesPath, "audit.log")
+	petStoreSwaggerPath = path.Join(fixturesPath, "test_petstore.json")
+	auditLogPath = path.Join(fixturesPath, "test_audit.log")
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Coverage Suite")
