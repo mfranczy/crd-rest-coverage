@@ -52,32 +52,20 @@ func getHTTPMethod(verb string) string {
 	}
 }
 
-// matchQueryParams matches query params from request log to stats structure built based on swagger definition,
-// as an example, by having stats.Endpoint{method: GET, Query: [param1: 0], ParamsHit: 0}
-// and request GET /?param1=test1&param2=test2
-// - it increments the parameter occurrence number, requestStats{method: GET, Query: [param1: 1], ParamsHit: 1}
-// - it logs an error for not documented/invalid parameters, in this example parameter named "test2"
+// matchQueryParams matches query params from request log to stats structure which has been built based on swagger definition
 func matchQueryParams(values url.Values, endpoint *stats.Endpoint) {
 	for k := range values {
-		if hits, ok := endpoint.ParamsHitsDetails.Query[k]; ok {
-			if hits < 1 {
-				// get only unique hits
-				endpoint.UniqueHits++
-			}
-			endpoint.ParamsHitsDetails.Query[k]++
+		if n := endpoint.Query.Root.GetChild(k); n != nil {
+			endpoint.Params.Query.IncreaseHits(n)
 		} else {
 			glog.Errorf("Invalid query param: '%s' for '%s %s'", k, endpoint.Method, endpoint.Path)
 		}
 	}
 }
 
-// matchBodyParams matches body params from request log to stats structure built based on swagger definition,
-// as an example, by having stats.Endpoint{method: POST, Body: {}, ParamsHit: 0} and request
-// POST / {"param1": {"param2": "test"}}
-// - it builds the parameter path and increase its occurrence number, stats.Endpoint{method: POST, Body: {param1.param2: 1}, ParamsHit: 1}
-// - it returns an error if request provides body params but it is not defined in swagger definition
+// matchBodyParams matches body params from request log to stats structure which has been built based on swagger definition
 func matchBodyParams(requestObject *runtime.Unknown, endpoint *stats.Endpoint) error {
-	if requestObject != nil && endpoint.ParamsHitsDetails.Body != nil {
+	if requestObject != nil {
 		var req interface{}
 		err := json.Unmarshal(requestObject.Raw, &req)
 		if err != nil {
@@ -86,13 +74,13 @@ func matchBodyParams(requestObject *runtime.Unknown, endpoint *stats.Endpoint) e
 		switch r := req.(type) {
 		case []interface{}:
 			for _, v := range r {
-				err = extractBodyParams(v, "", endpoint, 0)
+				err = extractBodyParams(v, "", endpoint.Params.Body, endpoint.Params.Body.Root)
 				if err != nil {
 					return fmt.Errorf("Invalid requestObject '%s' for '%s %s'", err, endpoint.Method, endpoint.Path)
 				}
 			}
 		default:
-			err = extractBodyParams(r, "", endpoint, 0)
+			err = extractBodyParams(r, "", endpoint.Params.Body, endpoint.Params.Body.Root)
 			if err != nil {
 				return fmt.Errorf("Invalid requestObject '%s' for '%s %s'", err, endpoint.Method, endpoint.Path)
 			}
@@ -105,46 +93,41 @@ func matchBodyParams(requestObject *runtime.Unknown, endpoint *stats.Endpoint) e
 	return nil
 }
 
-// extractBodyParams builds a body parameter path from JSON structure and increase its occurence number, as an example,
-// {param1: {param2: {param3a: value1, param3b: value2}}} will be extracted into paths:
-// - param1.param2.param3a: 1
-// - param1.param2.param3b: 1
-func extractBodyParams(params interface{}, path string, endpoint *stats.Endpoint, level int) error {
+// extractBodyParams iterates over json and increase hits number in stats.Trie
+func extractBodyParams(params interface{}, key string, body *stats.Trie, node *stats.Node) error {
 	p, ok := params.(map[string]interface{})
-	if !ok && level == 0 {
+	if !ok && node.Depth == 0 {
 		return fmt.Errorf("%v", p)
 	} else if !ok {
 		return nil
 	}
-	level++
 
-	pathCopy := path
+	if len(p) == 0 && node != body.Root {
+		// include empty objects
+		body.IncreaseHits(node)
+		return nil
+	}
+
 	for k, v := range p {
-		if level == 1 {
-			path = k
-		} else {
-			path += "." + k
+		n := node.GetChild(k)
+		// if child node does not exist then increase the current node
+		// for instance, having a.b.c.d if 'c' does not have child 'd' then increase hits for 'c'
+		if n == nil {
+			n = node
 		}
 
 		switch obj := v.(type) {
 		case map[string]interface{}:
-			extractBodyParams(obj, path, endpoint, level)
+			extractBodyParams(obj, k, body, n)
 		case []interface{}:
 			for _, v := range obj {
-				extractBodyParams(v, path, endpoint, level)
+				extractBodyParams(v, k, body, n)
 			}
 		default:
-			if i, ok := endpoint.ParamsHitsDetails.Body[path]; ok {
-				if i < 1 {
-					endpoint.UniqueHits++
-				}
-				endpoint.ParamsHitsDetails.Body[path]++
-			} else {
-				glog.Errorf("Invalid body param: '%s' for '%s %s'", k, endpoint.Method, endpoint.Path)
-			}
+			body.IncreaseHits(n)
 		}
-		path = pathCopy
 	}
+
 	return nil
 }
 
@@ -152,6 +135,8 @@ func extractBodyParams(params interface{}, path string, endpoint *stats.Endpoint
 func calculateCoverage(coverage *stats.Coverage) {
 	for _, es := range coverage.Endpoints {
 		for _, e := range es {
+			e.UniqueHits = e.Query.UniqueHits + e.Body.UniqueHits
+
 			if e.MethodCalled {
 				e.UniqueHits++
 			}
@@ -163,7 +148,6 @@ func calculateCoverage(coverage *stats.Coverage) {
 			}
 
 			if e.ExpectedUniqueHits > 0 {
-				coverage.ExpectedUniqueHits += e.ExpectedUniqueHits
 				coverage.UniqueHits += e.UniqueHits
 				e.Percent = float64(e.UniqueHits) * 100 / float64(e.ExpectedUniqueHits)
 			} else {
@@ -188,7 +172,7 @@ func Print(coverage *stats.Coverage, detailed bool) error {
 			for _, e := range es {
 				fmt.Printf("%s:%.2f%%\t", strings.ToUpper(e.Method), e.Percent)
 			}
-			fmt.Println()
+			fmt.Print("\n\n")
 		}
 	}
 	fmt.Printf("\nTotal coverage: %.2f%%\n\n", coverage.Percent)
@@ -246,7 +230,9 @@ func Generate(auditLogsPath string, swaggerPath string, filter string) (*stats.C
 
 		path := getSwaggerPath(uri.Path, event.ObjectRef)
 		if _, ok := coverage.Endpoints[path]; !ok {
-			glog.Errorf("Path '%s' not found in swagger", path)
+			if filter == "" {
+				glog.Errorf("Path '%s' not found in swagger", path)
+			}
 			continue
 		}
 
