@@ -87,8 +87,8 @@ func (t *Trie) IncreaseHits(node *Node) {
 type Node struct {
 	Key      string           `json:"-"`
 	Hits     int              `json:"hits"`
-	Depth    int              `json:"depth"`
-	IsLeaf   bool             `json:"leaf"`
+	Depth    int              `json:"-"`
+	IsLeaf   bool             `json:"-"`
 	Parent   *Node            `json:"-"`
 	Children map[string]*Node `json:"items,omitempty"`
 }
