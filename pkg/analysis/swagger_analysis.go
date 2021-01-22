@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/go-openapi/loads"
@@ -22,6 +23,8 @@ func AnalyzeSwagger(document *loads.Document, filter string) (*stats.Coverage, e
 			return nil, fmt.Errorf("Invalid method:path pair '%s'", mp)
 		}
 		method, path := strings.ToLower(v[0]), strings.ToLower(v[1])
+		re := regexp.MustCompile(`{(namespace|name):\[a-z0-9\]\[a-z0-9\\-\]\*}`)
+		path = re.ReplaceAllString(path, "{$1}")
 
 		// filter requests uri
 		if !strings.HasPrefix(path, filter) {
