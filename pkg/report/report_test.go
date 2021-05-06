@@ -26,7 +26,7 @@ var _ = Describe("REST API coverage report", func() {
 			err = json.Unmarshal(content, &expectedCoverage)
 			Expect(err).NotTo(HaveOccurred())
 
-			coverage, err := Generate(auditLogPath, petStoreSwaggerPath, filter)
+			coverage, err := Generate(auditLogPath, petStoreSwaggerPath, filter, false)
 			Expect(err).NotTo(HaveOccurred(), "coverage structure should be initialized")
 
 			Expect(coverage.Percent).To(Equal(expectedCoverage.Percent), "percent should be equal")
@@ -67,7 +67,7 @@ var _ = Describe("REST API coverage report", func() {
 		)
 
 		table.DescribeTable("Should return correct swagger path based on audit URL", func(URI string, objRef *auditv1.ObjectReference, swaggerPath string) {
-			path := getSwaggerPath(URI, objRef)
+			path := getSwaggerPath(URI, objRef, false)
 			Expect(path).To(Equal(swaggerPath))
 		},
 			table.Entry(

@@ -12,7 +12,7 @@ import (
 )
 
 // AnalyzeSwagger initializes a stats structure based on swagger definition with total params number for each available endpoint
-func AnalyzeSwagger(document *loads.Document, filter string) (*stats.Coverage, error) {
+func AnalyzeSwagger(document *loads.Document, filter string, ignoreResourceVersion bool) (*stats.Coverage, error) {
 	coverage := stats.Coverage{
 		Endpoints: make(map[string]map[string]*stats.Endpoint),
 	}
@@ -23,8 +23,19 @@ func AnalyzeSwagger(document *loads.Document, filter string) (*stats.Coverage, e
 			return nil, fmt.Errorf("Invalid method:path pair '%s'", mp)
 		}
 		method, path := strings.ToLower(v[0]), strings.ToLower(v[1])
+		params := document.Analyzer.ParamsFor(method, path)
+
+		// adjust name and namespace to simple format instead of copying regex from the swagger
 		re := regexp.MustCompile(`{(namespace|name):\[a-z0-9\]\[a-z0-9\\-\]\*}`)
 		path = re.ReplaceAllString(path, "{$1}")
+
+		if ignoreResourceVersion {
+			s := strings.Split(path, "/")
+			if len(s) >= 4 && s[3] != "" {
+				s[3] = "*"
+			}
+			path = strings.Join(s, "/")
+		}
 
 		// filter requests uri
 		if !strings.HasPrefix(path, filter) {
@@ -48,7 +59,7 @@ func AnalyzeSwagger(document *loads.Document, filter string) (*stats.Coverage, e
 			coverage.ExpectedUniqueHits++
 		}
 
-		addSwaggerParams(coverage.Endpoints[path][method], document.Analyzer.ParamsFor(method, path), document.Spec().Definitions)
+		addSwaggerParams(coverage.Endpoints[path][method], params, document.Spec().Definitions)
 	}
 
 	// caclulate number of expected unique hits

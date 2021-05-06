@@ -23,12 +23,22 @@ import (
 // getSwaggerPath translates request path to generic swagger path, as an example,
 // /apis/kubevirt.io/v1alpha3/namespaces/kubevirt-test-default/virtualmachineinstances/vm-name will be translated to
 // /apis/kubevirt.io/v1alpha3/namespaces/{namespace}/virtualmachineinstances/{name}
-func getSwaggerPath(path string, objectRef *auditv1.ObjectReference) string {
+// if ignoreResourceVersion is enabled then path output will be:
+// /apis/kubevirt.io/*/namespaces/{namespace}/virtualmachineinstances/{name}
+// that can be useful if you want to calculate the coverage without versions distinction
+func getSwaggerPath(path string, objectRef *auditv1.ObjectReference, ignoreResourceVersion bool) string {
 	if namespace := objectRef.Namespace; namespace != "" {
 		path = strings.Replace(path, "namespaces/"+namespace, "namespaces/{namespace}", 1)
 	}
 	if name := objectRef.Name; name != "" {
 		path = strings.Replace(path, objectRef.Resource+"/"+name, objectRef.Resource+"/{name}", 1)
+	}
+	if ignoreResourceVersion {
+		s := strings.Split(path, "/")
+		if len(s) >= 3 && s[3] != "" {
+			s[3] = "*"
+		}
+		path = strings.Join(s, "/")
 	}
 	return path
 }
@@ -191,7 +201,7 @@ func Dump(path string, coverage *stats.Coverage) error {
 // Generate provides a full REST API coverage report based on k8s audit log and swagger definition,
 // by passing param "filter" you can limit the report to specific resources, as an example,
 // "/apis/kubevirt.io/v1alpha3/" limits to kubevirt v1alpha3; "" no limit
-func Generate(auditLogsPath string, swaggerPath string, filter string) (*stats.Coverage, error) {
+func Generate(auditLogsPath string, swaggerPath string, filter string, ignoreResourceVersion bool) (*stats.Coverage, error) {
 	start := time.Now()
 	defer glog.Infof("REST API coverage execution time: %s", time.Since(start))
 
@@ -205,7 +215,7 @@ func Generate(auditLogsPath string, swaggerPath string, filter string) (*stats.C
 		return nil, err
 	}
 
-	coverage, err := analysis.AnalyzeSwagger(sDocument, filter)
+	coverage, err := analysis.AnalyzeSwagger(sDocument, filter, ignoreResourceVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +238,7 @@ func Generate(auditLogsPath string, swaggerPath string, filter string) (*stats.C
 			return nil, err
 		}
 
-		path := getSwaggerPath(uri.Path, event.ObjectRef)
+		path := getSwaggerPath(uri.Path, event.ObjectRef, ignoreResourceVersion)
 		if _, ok := coverage.Endpoints[path]; !ok {
 			if filter == "" {
 				glog.Errorf("Path '%s' not found in swagger", path)
