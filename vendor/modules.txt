@@ -133,7 +133,7 @@ gopkg.in/tomb.v1
 gopkg.in/yaml.v2
 # k8s.io/api v0.0.0-20190703205437-39734b2a72fe
 k8s.io/api/authentication/v1
-# k8s.io/apimachinery v0.0.0-20190703205208-4cfb76a8bf76
+# k8s.io/apimachinery v0.15.7
 ## explicit
 k8s.io/apimachinery/pkg/api/resource
 k8s.io/apimachinery/pkg/apis/meta/v1
